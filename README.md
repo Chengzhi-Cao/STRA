@@ -1,6 +1,6 @@
 # STRA
 
-<img src= "https://github.com/Chengzhi-Cao/STRA/blob/main/img/network.jpg" width="80%">
+<img src= "https://github.com/Chengzhi-Cao/STRA/blob/main/img/network.jpg" width="120%">
 
 This repository provides the official PyTorch implementation of the following paper:
 
