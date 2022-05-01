@@ -73,7 +73,7 @@ GOPRO
 
 To train STRA , run the command below:
 
-``` python main.py --model_name "STRA" --mode "train" --data_dir "dataset/GOPRO" ```
+``` python main.py --model_name "STRA" --mode "train_event_Temporal" --data_dir "dataset/GOPRO" ```
 
 Model weights will be saved in ``` results/model_name/weights``` folder.
 
