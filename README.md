@@ -1,6 +1,7 @@
 # STRA
 
-<img src= "https://github.com/chosj95/MIMO-UNet/blob/main/img/Architecture.jpg" width="80%">
+https://github.com/Chengzhi-Cao/STRA
+<img src= "https://github.com/Chengzhi-Cao/STRA/img/network.jpg" width="80%">
 
 This repository provides the official PyTorch implementation of the following paper:
 
