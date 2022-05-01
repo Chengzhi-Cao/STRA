@@ -63,6 +63,9 @@ GOPRO
 │ ├─ ...... (same as train)
 
 ```
+- Preprocess events by running the command below:
+
+  ``` python data/dataset_event.py```
 
 ---
 
