@@ -93,4 +93,4 @@ Output images will be saved in ``` results/model_name/result_image``` folder.
 Should you have any question, please contact chengzhicao@mail.ustc.edu.cn.
 
 ## Notes and references
-The  code is based on the MIMO-UNet project: https://github.com/chosj95/mimo-unet
+The  code is based on the paper 'Rethinking Coarse-to-Fine Approach in Single Image Deblurring'(https://arxiv.org/abs/2108.05054)
