@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Softmax
 
-# from .MIMO_2C_e_plus_x import *
 ##################################################################################
 class BasicConv(nn.Module):
     def __init__(self, in_channel, out_channel, kernel_size, stride, bias=True, norm=False, relu=True, transpose=False):
@@ -426,10 +425,3 @@ class STRA(nn.Module):
         return z+x,event_feature
 
 
-from torchstat import stat
-model = STRA(num_res=2)
-
-stat(model, (9,40,40))
-
-# input_img = torch.zeros(4,9,40,40)
-# output_img,_ = model(input_img)
