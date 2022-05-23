@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Softmax
 
+# from .MIMO_2C_e_plus_x import *
 ##################################################################################
 class BasicConv(nn.Module):
     def __init__(self, in_channel, out_channel, kernel_size, stride, bias=True, norm=False, relu=True, transpose=False):
@@ -106,9 +107,9 @@ class FAM(nn.Module):
 
 ###################################################################################################
 ######################################################################################################
-class Att_1(nn.Module):
+class SFB1(nn.Module):
     def __init__(self, in_channel, out_channel,thita=1e-4):
-        super(Att_1, self).__init__()
+        super(SFB1, self).__init__()
         self.thita = thita
         self.out_channel = out_channel
         self.value_conv = nn.Sequential(
@@ -119,13 +120,13 @@ class Att_1(nn.Module):
             BasicConv(self.out_channel, self.out_channel, kernel_size=1, stride=1, relu=True),
         )
         
-        self.query_conv = nn.Sequential(  
+        self.query_conv = nn.Sequential(    # 提取事件特征
             BasicConv(self.out_channel,self.out_channel,kernel_size=1,stride=1,relu=True),
         )
 
         #########################################################
         #########################################################
-        self.event_feature_extract = nn.Sequential(    
+        self.event_feature_extract = nn.Sequential(    # 提取事件特征
             BasicConv(out_channel*1,self.out_channel,kernel_size=1,stride=1,relu=True),
             BasicConv(out_channel*1,self.out_channel,kernel_size=1,stride=1,relu=True),
         )
@@ -150,6 +151,9 @@ class Att_1(nn.Module):
         x_2 = self.x_feature_extract[1](x_2)
         event_feature = self.event_feature_extract[1](event_feature)
 
+        ################################################################
+        #################################################################
+
         m_batchsize,C,width ,height = x_2.size()
         proj_query = self.query_conv(x_2).view(m_batchsize, -1, width*height).permute(0,2,1) # B X CX(N)
         proj_key = self.key_conv(event_feature).view(m_batchsize, -1, width*height) # B X C x (*W*H)
@@ -170,9 +174,9 @@ class Att_1(nn.Module):
         return out,event_feature
     
 
-class Att_2(nn.Module):
+class SFB2(nn.Module):
     def __init__(self, in_channel, out_channel,thita=1e-4):
-        super(Att_2, self).__init__()
+        super(SFB2, self).__init__()
         self.thita = thita
         self.out_channel = out_channel
         self.value_conv = nn.Sequential(
@@ -183,11 +187,12 @@ class Att_2(nn.Module):
             BasicConv(self.out_channel, self.out_channel, kernel_size=1, stride=1, relu=True),
         )
         
-        self.query_conv = nn.Sequential(   
+        self.query_conv = nn.Sequential(    # 提取事件特征
             BasicConv(self.out_channel,self.out_channel,kernel_size=1,stride=1,relu=True),
         )
-
-        self.event_feature_extract = nn.Sequential(    
+        #########################################################
+        #########################################################
+        self.event_feature_extract = nn.Sequential(    # 提取事件特征
             BasicConv(out_channel*2,self.out_channel,kernel_size=1,stride=1,relu=True),
             BasicConv(out_channel*1,self.out_channel,kernel_size=1,stride=1,relu=True),
         )
@@ -212,6 +217,9 @@ class Att_2(nn.Module):
         x_2 = self.x_feature_extract[1](x_2)
         event_feature = self.event_feature_extract[1](event_feature)
 
+        
+        ################################################################
+        #################################################################
         m_batchsize,C,width ,height = x_2.size()
         proj_query = self.query_conv(x_2).view(m_batchsize, -1, width*height).permute(0,2,1) # B X CX(N)
         proj_key = self.key_conv(event_feature).view(m_batchsize, -1, width*height) # B X C x (*W*H)
@@ -235,11 +243,103 @@ def INF(B,H,W):
      return -torch.diag(torch.tensor(float("inf")).cuda().repeat(H),0).unsqueeze(0).repeat(B*W,1,1)
 
 
-##########################################################################################################
+class TMB(nn.Module):
+    def __init__(self, out_channel,thita=1e-4):
+        super(TMB, self).__init__()
+        self.thita = thita
+        self.out_channel = out_channel
+        self.value_conv = nn.Sequential(
+            BasicConv(self.out_channel, self.out_channel, kernel_size=1, stride=1, relu=True),
+        )
+        
+        self.key_conv = nn.Sequential(
+            BasicConv(self.out_channel, self.out_channel, kernel_size=1, stride=1, relu=True),
+        )
+        
+        self.query_conv = nn.Sequential(    # 提取事件特征
+            BasicConv(self.out_channel,self.out_channel,kernel_size=1,stride=1,relu=True),
+        )
+        #########################################################
+        #########################################################
+        self.event_feature_extract = nn.Sequential(    # 提取事件特征
+            BasicConv(out_channel*2,self.out_channel,kernel_size=1,stride=1,relu=True),
+            BasicConv(out_channel*1,self.out_channel,kernel_size=1,stride=1,relu=True),
+        )
+        self.x_feature_extract = nn.Sequential(
+            BasicConv(out_channel*3,self.out_channel,kernel_size=1,stride=1,relu=True),
+            BasicConv(out_channel*1,self.out_channel,kernel_size=1,stride=1,relu=True),
+        )
+
+        self.gamma = nn.Parameter(torch.zeros(1))
+        self.softmax  = nn.Softmax(dim=-1)
+        self.INF = INF
+ 
+ 
+        self.conv_neighbor = BasicConv(4,self.out_channel*2,kernel_size=1,stride=1,relu=True)
+        self.conv_pro_key = BasicConv(self.out_channel,self.out_channel,kernel_size=1,stride=1,relu=True)
+        self.conv_pro_val = BasicConv(self.out_channel,self.out_channel,kernel_size=1,stride=1,relu=True)
+        self.conv_lat_key = BasicConv(self.out_channel,self.out_channel,kernel_size=1,stride=1,relu=True)
+        self.conv_lat_val = BasicConv(self.out_channel,self.out_channel,kernel_size=1,stride=1,relu=True)
+        self.conv_now1 = BasicConv(2,self.out_channel,kernel_size=1,stride=1,relu=True)
+        # self.conv_now2 = BasicConv(self.out_channel,self.out_channel,kernel_size=1,stride=1,relu=True)
+
+        self.conv_tmp1 = BasicConv(self.out_channel*2,self.out_channel,kernel_size=1,stride=1,relu=True)
+        self.conv_tmp2 = BasicConv(self.out_channel*2,self.out_channel,kernel_size=1,stride=1,relu=True)
+
+        self.conv_now_key = BasicConv(self.out_channel,self.out_channel,kernel_size=1,stride=1,relu=True)
+        self.conv_now_val = BasicConv(self.out_channel,self.out_channel,kernel_size=1,stride=1,relu=True)
+ 
+    def forward(self, event):
+        event_pro = event[:,range(0,2),:,:]
+        event_now = event[:,range(2,4),:,:]
+        event_lat = event[:,range(4,6),:,:]
+
+        event_pro = torch.as_tensor(event_pro)
+        event_now = torch.as_tensor(event_now)
+        event_lat = torch.as_tensor(event_lat)
+        event_neighbor = torch.cat((event_pro,event_lat),1)
+        event_neighbor = self.conv_neighbor(event_neighbor)
+        event_pro_key = self.conv_pro_key(event_neighbor[:,range(0,self.out_channel),:,])
+        event_pro_val = self.conv_pro_val(event_neighbor[:,range(self.out_channel,self.out_channel*2),:,:])
+        event_lat_key = self.conv_lat_key(event_neighbor[:,range(0,self.out_channel),:,:])
+        event_lat_val = self.conv_lat_val(event_neighbor[:,range(self.out_channel,self.out_channel*2),:,:])
+        
+
+        event_key_neighbor = torch.cat((event_pro_key,event_lat_key),1)
+        event_val_neighbor = torch.cat((event_pro_val,event_lat_val),1)
+        event_key_neighbor = self.conv_tmp1(event_key_neighbor)
+        event_val_neighbor = self.conv_tmp1(event_val_neighbor)
+
+        
+        event_now = self.conv_now1(event_now)
+
+        event_now_key = self.conv_now_key(event_now)
+        event_now_val = self.conv_now_val(event_now)
+
+        ################################################################
+        #################################################################
+        m_batchsize,C,width ,height = event_key_neighbor.size()
+        proj_query = self.query_conv(event_key_neighbor).view(m_batchsize, -1, width*height).permute(0,2,1) # B X CX(N)
+        proj_key = self.key_conv(event_now_key).view(m_batchsize, -1, width*height) # B X C x (*W*H)
+        energy = torch.bmm(proj_query, proj_key) # transpose check
+        attention = self.softmax(energy) # BX (N) X (N)
+        proj_value = self.value_conv(event_val_neighbor).view(m_batchsize, -1, width*height) # B X C X N
+ 
+        out = torch.bmm(proj_value,attention.permute(0, 2, 1) )
+        out = out.view(m_batchsize, C, width, height)
+ 
+        out = self.thita * out + event_now_val
+
+        return out
+    
+#####################################################################################
+#####################################################################################
 class STRA(nn.Module):
-    def __init__(self, num_res,base_channel=32):
+    def __init__(self, num_res,base_channel=16):
         super(STRA, self).__init__()
         self.thita = 1e-3
+        # base_channel = 32
+
         self.Encoder = nn.ModuleList([
             EBlock(base_channel, num_res),
             EBlock(base_channel*2, num_res),
@@ -277,22 +377,21 @@ class STRA(nn.Module):
         self.event_c1=nn.Conv2d(in_channels=2, out_channels=10, kernel_size=1, stride=1, padding=0, bias=False)
         self.event_c2=nn.Conv2d(in_channels=10, out_channels=base_channel, kernel_size=1, stride=1, padding=0, bias=False)
 
-        self.Event_Fusion_3 = nn.ModuleList([
-            Att_1(base_channel*4,base_channel*1,self.thita)
+        self.sfb1 = nn.ModuleList([
+            SFB1(base_channel*4,base_channel*1,self.thita)
         ])
-        self.Event_Fusion_4 = nn.ModuleList([
-            Att_2(base_channel*3,base_channel*1,self.thita)
+        self.sfb2 = nn.ModuleList([
+            SFB2(base_channel*3,base_channel*1,self.thita)
         ])
 
-
+        self.tmb = TMB(out_channel=base_channel)
 
     def forward(self, x,output_last_feature=None):
 
-        event = x[:,range(3,5),:,:]
+        event = x[:,range(3,9),:,:]
         x = x[:,range(0,3),:,:]
 
-        event = self.event_c1(event)
-        event = self.event_c2(event)
+        event = self.tmb(event)
 
         x_ = self.feat_extract[0](x)
         res1 = self.Encoder[0](x_)
@@ -307,9 +406,9 @@ class STRA(nn.Module):
         z21 = F.interpolate(res2, scale_factor=2)
 
         if output_last_feature is not None:
-            res1,event_feature = self.Event_Fusion_4[0](res1,z21,event,output_last_feature)
+            res1,event_feature = self.sfb2[0](res1,z21,event,output_last_feature)
         else:
-            res1,event_feature = self.Event_Fusion_3[0](res1,z21,event)
+            res1,event_feature = self.sfb1[0](res1,z21,event)
 
         z = self.Decoder[0](z)
         z = self.feat_extract[3](z)
@@ -325,3 +424,12 @@ class STRA(nn.Module):
         z = self.feat_extract[5](z)
 
         return z+x,event_feature
+
+
+from torchstat import stat
+model = STRA(num_res=2)
+
+stat(model, (9,40,40))
+
+# input_img = torch.zeros(4,9,40,40)
+# output_img,_ = model(input_img)
